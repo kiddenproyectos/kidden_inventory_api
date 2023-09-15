@@ -27,10 +27,10 @@ adminRouter.get("/users", (req, res) => {
 
 adminRouter.post("/user", (req, res) => {
   // Obtener los datos enviados desde el cliente (JSON en este caso)
-  const { nombre, email, cellphone, invitation, password } = req.body;
+  const { nombre, rol, password } = req.body;
 
   // Validar que los datos requeridos estén presentes en la solicitud
-  if (!nombre || !email) {
+  if (!nombre || !password) {
     return res.status(400).json({ error: "Todos los campos son obligatorios" });
   }
 
@@ -43,11 +43,7 @@ adminRouter.post("/user", (req, res) => {
   const usuario = {
     id: { S: id },
     nombre: { S: nombre },
-    email: { S: email },
-    cellphone: { S: cellphone },
-    invitation: { S: invitation },
-    // los booleanos se tienen que pasar a strings por cosas de dynamo db
-    // policyAccepted: { S: policyAccepted.toString() },
+    rol: { S: rol },
     password: { S: password },
     // Puedes agregar otros atributos aquí si es necesario
   };
