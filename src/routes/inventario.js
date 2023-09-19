@@ -67,7 +67,10 @@ inventarioRouter.post("/nuevo-producto", (req, res) => {
       console.log("Producto agregado correctamente:", data);
       return res
         .status(201)
-        .json({ message: "Producto agregado correctamente" });
+        .json({
+          message: "Producto agregado correctamente",
+          productoNuevo: data,
+        });
     }
   });
 });
