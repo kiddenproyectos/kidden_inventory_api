@@ -4,6 +4,7 @@ import cors from "cors";
 import adminRouter from "./routes/admin.js";
 import planeacionRouter from "./routes/planeacion.js";
 import authRouter from "./routes/auth.js";
+import inventarioRouter from "./routes/inventario.js";
 
 const app = express();
 
@@ -18,6 +19,7 @@ app.use(helmet());
 app.use("/administration", adminRouter);
 app.use("/planeacion", planeacionRouter);
 app.use("/auth", authRouter);
+app.use("/inventario", inventarioRouter);
 
 app.get("/", (req, res) => {
   res.json("hola desde el server");
