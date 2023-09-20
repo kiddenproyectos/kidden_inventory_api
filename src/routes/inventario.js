@@ -57,20 +57,16 @@ inventarioRouter.post("/nuevo-producto", (req, res) => {
     Item: producto,
     ReturnValues: "ALL_OLD",
   };
-
-  // Realizar la operación de escritura en DynamoDB para agregar el nuevo usuario
   dynamodb.putItem(putParams, (err, data) => {
     if (err) {
       console.error("Error al agregar el producto:", err);
       return res.status(500).json({ error: err });
     } else {
       console.log("Producto agregado correctamente:", data);
-      return res
-        .status(201)
-        .json({
-          message: "Producto agregado correctamente",
-          productoNuevo: data,
-        });
+      return res.status(201).json({
+        message: "Producto agregado correctamente",
+        productoNuevo: putParams.Item,
+      });
     }
   });
 });
