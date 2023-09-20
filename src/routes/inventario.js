@@ -71,4 +71,58 @@ inventarioRouter.post("/nuevo-producto", (req, res) => {
   });
 });
 
+// Función para borrar un elemento por su clave primaria
+async function deleteItemById(id) {
+  const deleteParams = {
+    TableName: "Inventario",
+    Key: {
+      id: { S: `${id}` }, // Reemplaza "id" con el nombre de la clave primaria
+    },
+  };
+  return dynamodb.deleteItem(deleteParams).promise();
+}
+
+// Endpoint para eliminar productos por IDs
+inventarioRouter.post("/eliminar-productos", async (req, res) => {
+  // Obtener los IDs de los productos a eliminar desde el cuerpo de la solicitud
+  const { ids } = req.body;
+
+  // Validar que se proporcionaron IDs válidos
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return res
+      .status(400)
+      .json({ error: "Se requiere un array de IDs válidos" });
+  }
+
+  try {
+    // Iterar sobre los IDs y realizar las operaciones de eliminación
+    const deletedProducts = [];
+    const errors = [];
+
+    for (const id of ids) {
+      try {
+        await deleteItemById(id);
+        deletedProducts.push(id);
+      } catch (error) {
+        errors.push({ id, error: error.message });
+      }
+    }
+
+    if (errors.length === 0) {
+      return res.json({
+        message: "Productos eliminados con éxito",
+        deletedProducts,
+      });
+    } else {
+      return res.status(500).json({
+        error: "Error al eliminar algunos productos",
+        deletedProducts,
+        errors,
+      });
+    }
+  } catch (error) {
+    return res.status(500).json({ error: "Error interno del servidor" });
+  }
+});
+
 export default inventarioRouter;
