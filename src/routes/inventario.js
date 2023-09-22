@@ -1,6 +1,12 @@
 import { Router } from "express";
 import AWS from "../aws.js";
 import { customAlphabet } from "nanoid";
+import multer from "multer";
+import sharp from "sharp";
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+});
 
 const inventarioRouter = Router();
 const dynamodb = new AWS.DynamoDB();
@@ -23,53 +29,137 @@ inventarioRouter.get("/productos", (req, res) => {
   });
 });
 
-inventarioRouter.post("/nuevo-producto", (req, res) => {
-  // Obtener los datos enviados desde el cliente (JSON en este caso)
-  const { nombre, presentacion, marca, modelo, estado, stock, lugar } =
-    req.body;
+inventarioRouter.post(
+  "/nuevo-producto",
+  upload.single("imagen"),
+  (req, res) => {
+    // Obtener los datos enviados desde el cliente (JSON en este caso)
+    const { nombre, presentacion, marca, modelo, estado, stock, lugar } =
+      req.body;
 
-  // Validar que los datos requeridos estén presentes en la solicitud
-  if (!nombre) {
-    return res.status(400).json({ error: "El nombre es obligatorio" });
-  }
+    // obetener datos del file de la imagen
+    const imagen = req.file;
 
-  // Generar un ID único para el nuevo usuario
-  const alphabet = "0123456789";
-  const nanoid = customAlphabet(alphabet, 4);
-  const id = nanoid();
-
-  // Crear un objeto con los datos del nuevo usuario
-  const producto = {
-    // Puedes agregar otros atributos aquí si es necesario
-    id: { S: id },
-    nombre: { S: nombre },
-    presentacion: { S: presentacion },
-    marca: { S: marca || "Sin marca" },
-    modelo: { S: modelo || "N/A" },
-    estado: { S: estado || "No Activo" },
-    stock: { S: stock },
-    lugar: { S: lugar },
-  };
-
-  // Parámetros para la operación de escritura en DynamoDB
-  const putParams = {
-    TableName: "Inventario", // Reemplaza con el nombre de tu tabla de usuarios
-    Item: producto,
-    ReturnValues: "ALL_OLD",
-  };
-  dynamodb.putItem(putParams, (err, data) => {
-    if (err) {
-      console.error("Error al agregar el producto:", err);
-      return res.status(500).json({ error: err });
-    } else {
-      console.log("Producto agregado correctamente:", data);
-      return res.status(201).json({
-        message: "Producto agregado correctamente",
-        productoNuevo: putParams.Item,
-      });
+    // Validar que los datos requeridos estén presentes en la solicitud
+    if (!nombre) {
+      return res.status(400).json({ error: "El nombre es obligatorio" });
     }
-  });
-});
+
+    // Generar un ID único para el nuevo usuario
+    const alphabet = "0123456789";
+    const nanoid = customAlphabet(alphabet, 4);
+    const id = nanoid();
+
+    // Configura S3 para cargar la imagen
+    const s3 = new AWS.S3();
+    // Nombre del archivo en S3 (puedes ajustarlo según tu estructura)
+    const imageKey = `productos/${id}-${nombre}.jpg`;
+
+    if (!imagen) {
+      const producto = {
+        id: { S: id },
+        nombre: { S: nombre },
+        presentacion: { S: presentacion },
+        marca: { S: marca || "Sin marca" },
+        modelo: { S: modelo || "N/A" },
+        estado: { S: estado || "No Activo" },
+        stock: { S: stock },
+        lugar: { S: lugar },
+        imagenes: {
+          S: "https://kidden-fotos-productos.s3.us-east-1.amazonaws.com/productos/6318-Producto%20de%20Ejemplo.jpg",
+        },
+      };
+      const putParams = {
+        TableName: "Inventario",
+        Item: producto,
+        ReturnValues: "ALL_OLD",
+      };
+      dynamodb.putItem(putParams, (err, data) => {
+        if (err) {
+          console.error("Error al agregar el producto:", err);
+          return res.status(500).json({ error: err });
+        } else {
+          console.log("Producto agregado correctamente:", data);
+          return res.status(201).json({
+            message: "Producto agregado correctamente",
+            productoNuevo: putParams.Item,
+          });
+        }
+      });
+    } else {
+      // Lee y comprime la imagen con Sharp antes de cargarla en S3
+      // verifica que la iamgen sea menor de 10mb antes de hacer la operacion
+      if (imagen.size < 1024 * 1024 * 10) {
+        sharp(imagen.buffer)
+          .jpeg({ quality: 80 }) // Puedes ajustar la calidad de compresión
+          .toBuffer()
+          .then((buffer) => {
+            const imageParams = {
+              Bucket: "kidden-fotos-productos",
+              Key: imageKey,
+              Body: buffer,
+              ContentType: imagen.mimetype,
+            };
+            // subir a el bucket de S3
+            s3.upload(imageParams, (err, data) => {
+              if (err) {
+                console.error("Error al subir la imagen a S3:", err);
+                return res.status(500).json({ error: err });
+              } else {
+                console.log("Imagen subida a S3:", data.Location);
+                // hacer un producto con la location de la imagen
+                const producto = {
+                  id: { S: id },
+                  nombre: { S: nombre },
+                  presentacion: { S: presentacion },
+                  marca: { S: marca || "Sin marca" },
+                  modelo: { S: modelo || "N/A" },
+                  estado: { S: estado || "No Activo" },
+                  stock: { S: stock },
+                  lugar: { S: lugar },
+                  // en el caso que sea un array aqui se usaria un SS
+                  // imagenes: {
+                  //   SS: [data.Location],
+                  // },
+                  // como yo solo quiero subir una sola imagen uso este caso
+                  imagenes: { S: data.Location },
+                };
+
+                const putParams = {
+                  TableName: "Inventario",
+                  Item: producto,
+                  ReturnValues: "ALL_OLD",
+                };
+
+                // cargar el neuvo producto a la base de datos
+
+                dynamodb.putItem(putParams, (err, data) => {
+                  if (err) {
+                    console.error("Error al agregar el producto:", err);
+                    return res.status(500).json({ error: err });
+                  } else {
+                    console.log("Producto agregado correctamente:", data);
+                    return res.status(201).json({
+                      message: "Producto agregado correctamente",
+                      productoNuevo: putParams.Item,
+                    });
+                  }
+                });
+              }
+            });
+          })
+          .catch((err) => {
+            console.error("Error al comprimir la imagen:", err);
+            return res.status(500).json({ error: err });
+          });
+      } else {
+        return res.status(400).json({
+          error: "La imagen excede el tamaño máximo permitido de 10 MB",
+        });
+      }
+    }
+  }
+);
 
 // Función para borrar un elemento por su clave primaria
 async function deleteItemById(id) {
