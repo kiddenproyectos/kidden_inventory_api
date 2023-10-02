@@ -94,6 +94,8 @@ inventarioRouter.post(
           S: "https://kidden-fotos-productos.s3.us-east-1.amazonaws.com/productos/6318-Producto%20de%20Ejemplo.jpg",
         },
         fechaAgregado: { S: new Date().toISOString() }, // Ejemplo de cómo obtener la fecha actual en formato ISO 8601
+        month: { S: (new Date().getMonth() + 1).toString() },
+        year: { S: new Date().getFullYear().toString() },
       };
       const putParams = {
         TableName: "Inventario",
