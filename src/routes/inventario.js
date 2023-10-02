@@ -11,8 +11,8 @@ const upload = multer({
 const inventarioRouter = Router();
 const dynamodb = new AWS.DynamoDB();
 
-inventarioRouter.get("/productos", (req, res) => {
-  const { month } = req.body;
+inventarioRouter.get("/productos/:month", (req, res) => {
+  const { month } = req.params;
 
   const mesesDelAnio = {
     enero: 1,
