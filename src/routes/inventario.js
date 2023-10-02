@@ -12,18 +12,43 @@ const inventarioRouter = Router();
 const dynamodb = new AWS.DynamoDB();
 
 inventarioRouter.get("/productos", (req, res) => {
+  const { month } = req.body;
+
+  const mesesDelAnio = {
+    enero: 1,
+    febrero: 2,
+    marzo: 3,
+    abril: 4,
+    mayo: 5,
+    junio: 6,
+    julio: 7,
+    agosto: 8,
+    septiembre: 9,
+    octubre: 10,
+    noviembre: 11,
+    diciembre: 12,
+  };
+  const mesNumero = mesesDelAnio[month].toString();
+
   const params = {
     TableName: "Inventario",
+    IndexName: "month-index", // Nombre del GSI
+    KeyConditionExpression: `#month = :month`,
+    ExpressionAttributeNames: {
+      "#month": "month", // Reemplaza "month" con el nombre real del campo de mes
+    },
+    ExpressionAttributeValues: {
+      ":month": { S: mesNumero },
+    },
   };
 
-  // Realizar el escaneo de la tabla para obtener todos los usuarios
-  dynamodb.scan(params, (err, data) => {
+  // Realizar la consulta en el índice global secundario "month-index" utilizando el método query
+  dynamodb.query(params, (err, data) => {
     if (err) {
-      //   console.error("Error al obtener los productos", err);
+      console.error("Error al obtener los productos", err);
       return res.status(500).json({ error: "Error interno del servidor" });
     } else {
-      const productos = data.Items; // Los usuarios se encuentran en la propiedad Items del resultado
-      //   console.log("productos obtenidos correctamente:", productos);
+      const productos = data.Items;
       return res.status(200).json(productos);
     }
   });
@@ -125,6 +150,8 @@ inventarioRouter.post(
                   // como yo solo quiero subir una sola imagen uso este caso
                   imagenes: { S: data.Location },
                   fechaAgregado: { S: new Date().toISOString() }, // Ejemplo de cómo obtener la fecha actual en formato ISO 8601
+                  month: { S: (new Date().getMonth() + 1).toString() },
+                  year: { S: new Date().getFullYear().toString() },
                 };
 
                 const putParams = {
