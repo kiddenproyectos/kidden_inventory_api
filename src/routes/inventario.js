@@ -59,8 +59,18 @@ inventarioRouter.post(
   upload.single("imagen"),
   (req, res) => {
     // Obtener los datos enviados desde el cliente (JSON en este caso)
-    const { nombre, presentacion, marca, modelo, estado, stock, lugar } =
-      req.body;
+    const {
+      nombre,
+      presentacion,
+      marca,
+      modelo,
+      estado,
+      stock,
+      lugar,
+      almacen,
+      entradas,
+      salidas,
+    } = req.body;
 
     // obetener datos del file de la imagen
     const imagen = req.file;
@@ -96,6 +106,9 @@ inventarioRouter.post(
         fechaAgregado: { S: new Date().toISOString() }, // Ejemplo de cómo obtener la fecha actual en formato ISO 8601
         month: { S: (new Date().getMonth() + 1).toString() },
         year: { S: new Date().getFullYear().toString() },
+        almacen: { S: almacen || "--" },
+        entradas: { S: entradas || "--" },
+        salidas: { S: salidas || "--" },
       };
       const putParams = {
         TableName: "Inventario",
@@ -154,6 +167,9 @@ inventarioRouter.post(
                   fechaAgregado: { S: new Date().toISOString() }, // Ejemplo de cómo obtener la fecha actual en formato ISO 8601
                   month: { S: (new Date().getMonth() + 1).toString() },
                   year: { S: new Date().getFullYear().toString() },
+                  almacen: { S: almacen || "--" },
+                  entradas: { S: entradas || "--" },
+                  salidas: { S: salidas || "--" },
                 };
 
                 const putParams = {
