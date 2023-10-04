@@ -208,6 +208,83 @@ inventarioRouter.post(
   }
 );
 
+// editar items al agregar una nueva entrada
+// al agregar una nueva entra se tiene que considerar la existencia actual
+inventarioRouter.put("/sumar-entrada/:id", (req, res) => {
+  const { id } = req.params;
+  const { entradas, almacen } = req.body;
+
+  const updateParams = {
+    TableName: "Inventario",
+    Key: {
+      id: { S: `${id}` }, // Reemplaza "id" con el nombre de la clave primaria
+    },
+    ExpressionAttributeNames: {
+      "#entradas": "entradas",
+      "#almacen": "almacen",
+    },
+    UpdateExpression: "set #entradas = :entradas,#almacen=:almacen",
+    ExpressionAttributeValues: {
+      ":entradas": { S: `${entradas}` },
+      ":almacen": { S: `${Number(entradas) + Number(almacen)}` },
+    },
+    ReturnValues: "ALL_NEW",
+  };
+  // modificar la cantidad de entradas al agregar mas
+  dynamodb.updateItem(updateParams, (err, data) => {
+    if (err) {
+      console.error("Error al editar el producto:", err);
+      return res.status(500).json({ error: err });
+    } else {
+      console.log("Producto editado correctamente:", data);
+      return res.status(201).json({
+        message: "Producto Editado correctamente",
+        productoEditado: data,
+      });
+    }
+  });
+});
+inventarioRouter.put("/restar-salida/:id", (req, res) => {
+  const { id } = req.params;
+  const { salidas, almacen } = req.body;
+
+  if (Number(salidas) > Number(almacen)) {
+    return res.status(500).json({
+      error:
+        "cuidado tu numero de salidas es mayor que tu existencia, verifica los datos",
+    });
+  }
+
+  const updateParams = {
+    TableName: "Inventario",
+    Key: {
+      id: { S: `${id}` }, // Reemplaza "id" con el nombre de la clave primaria
+    },
+    ExpressionAttributeNames: {
+      "#salidas": "salidas",
+      "#almacen": "almacen",
+    },
+    UpdateExpression: "set #salidas = :salidas,#almacen=:almacen",
+    ExpressionAttributeValues: {
+      ":salidas": { S: `${salidas}` },
+      ":almacen": { S: `${Number(almacen) - Number(salidas)}` },
+    },
+    ReturnValues: "ALL_NEW",
+  };
+  // modificar la cantidad de entradas al agregar mas
+  dynamodb.updateItem(updateParams, (err, data) => {
+    if (err) {
+      console.error("Error al editar el producto:", err);
+      return res.status(500).json({ error: err });
+    } else {
+      console.log("Producto editado correctamente:", data);
+      return res.status(201).json({
+        message: "Producto Editado correctamente",
+        productoEditado: data,
+      });
+    }
+  });
+});
 // Función para borrar un elemento por su clave primaria
 async function deleteItemById(id) {
   const deleteParams = {
