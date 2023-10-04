@@ -244,6 +244,7 @@ inventarioRouter.put("/sumar-entrada/:id", (req, res) => {
     }
   });
 });
+
 inventarioRouter.put("/restar-salida/:id", (req, res) => {
   const { id } = req.params;
   const { salidas, almacen } = req.body;
@@ -285,6 +286,7 @@ inventarioRouter.put("/restar-salida/:id", (req, res) => {
     }
   });
 });
+
 // Función para borrar un elemento por su clave primaria
 async function deleteItemById(id) {
   const deleteParams = {
