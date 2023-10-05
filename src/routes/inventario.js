@@ -106,7 +106,7 @@ inventarioRouter.post(
         fechaAgregado: { S: new Date().toISOString() }, // Ejemplo de cómo obtener la fecha actual en formato ISO 8601
         month: { S: (new Date().getMonth() + 1).toString() },
         year: { S: new Date().getFullYear().toString() },
-        almacen: { S: almacen || "--" },
+        almacen: { S: almacen || "0" },
         entradas: { S: entradas || "--" },
         salidas: { S: salidas || "--" },
       };
@@ -167,7 +167,7 @@ inventarioRouter.post(
                   fechaAgregado: { S: new Date().toISOString() }, // Ejemplo de cómo obtener la fecha actual en formato ISO 8601
                   month: { S: (new Date().getMonth() + 1).toString() },
                   year: { S: new Date().getFullYear().toString() },
-                  almacen: { S: almacen || "--" },
+                  almacen: { S: almacen || "0" },
                   entradas: { S: entradas || "--" },
                   salidas: { S: salidas || "--" },
                 };
