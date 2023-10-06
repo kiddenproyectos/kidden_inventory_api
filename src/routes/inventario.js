@@ -217,7 +217,7 @@ inventarioRouter.post(
 // al agregar una nueva entra se tiene que considerar la existencia actual
 inventarioRouter.put("/sumar-entrada/:id", (req, res) => {
   const { id } = req.params;
-  const { entradas, almacen } = req.body;
+  const { entradas, almacen, nombre } = req.body;
 
   const updateParams = {
     TableName: "Inventario",
@@ -241,10 +241,37 @@ inventarioRouter.put("/sumar-entrada/:id", (req, res) => {
       console.error("Error al editar el producto:", err);
       return res.status(500).json({ error: err });
     } else {
-      console.log("Producto editado correctamente:", data);
+      // Generar un ID único para el nuevo usuario
+      const alphabet = "0123456789";
+      const nanoid = customAlphabet(alphabet, 4);
+      const entradaid = nanoid();
+
+      const entradaDeProducto = {
+        id: { S: entradaid },
+        nombre: { S: nombre },
+        entrada: { S: entradas },
+        fechaAgregado: { S: new Date().toISOString() }, // Ejemplo de cómo obtener la fecha actual en formato ISO 8601
+        month: { S: (new Date().getMonth() + 1).toString() },
+        year: { S: new Date().getFullYear().toString() },
+      };
+      const putParams = {
+        TableName: "Entradas",
+        Item: entradaDeProducto,
+        ReturnValues: "ALL_OLD",
+      };
+      dynamodb.putItem(putParams, (err, data) => {
+        if (err) {
+          console.error("Error al agregar entrada:", err);
+          return res.status(500).json({ error: err });
+        } else {
+          console.log("Producto agregado correctamente:", data);
+        }
+      });
+
       return res.status(201).json({
         message: "Producto Editado correctamente",
         productoEditado: data,
+        entrada: entradaDeProducto,
       });
     }
   });
@@ -316,9 +343,37 @@ inventarioRouter.put("/restar-salida/:id", (req, res) => {
       return res.status(500).json({ error: err });
     } else {
       console.log("Producto editado correctamente:", data);
+      const alphabet = "0123456789";
+      const nanoid = customAlphabet(alphabet, 4);
+      const salidaId = nanoid();
+
+      const salidaDeProducto = {
+        id: { S: salidaId },
+        nombre: { S: nombre },
+        salida: { S: salidas },
+        fechaAgregado: { S: new Date().toISOString() }, // Ejemplo de cómo obtener la fecha actual en formato ISO 8601
+        month: { S: (new Date().getMonth() + 1).toString() },
+        year: { S: new Date().getFullYear().toString() },
+      };
+
+      const putParams = {
+        TableName: "Salidas",
+        Item: salidaDeProducto,
+        ReturnValues: "ALL_OLD",
+      };
+
+      dynamodb.putItem(putParams, (err, data) => {
+        if (err) {
+          console.error("Error al agregar salida:", err);
+          return res.status(500).json({ error: err });
+        } else {
+          console.log("Producto agregado correctamente:", data);
+        }
+      });
       return res.status(201).json({
         message: "Producto Editado correctamente",
         productoEditado: data,
+        salida: salidaDeProducto,
       });
     }
   });
@@ -377,5 +432,9 @@ inventarioRouter.post("/eliminar-productos", async (req, res) => {
     return res.status(500).json({ error: "Error interno del servidor" });
   }
 });
+
+//  TODO: endpoint para traer las entradas por nombre de producto
+
+// TODO: endpoint para traer las salidas por nombre de producto
 
 export default inventarioRouter;
