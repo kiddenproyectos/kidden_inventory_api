@@ -13,6 +13,23 @@ const dynamodb = new AWS.DynamoDB();
 // email service
 const ses = new AWS.SES();
 
+inventarioRouter.get("/productos", (req, res) => {
+  const params = {
+    TableName: "Inventario",
+  };
+
+  // Realizar la consulta en el índice global secundario "month-index" utilizando el método query
+  dynamodb.scan(params, (err, data) => {
+    if (err) {
+      console.error("Error al obtener los productos", err);
+      return res.status(500).json({ error: "Error interno del servidor" });
+    } else {
+      const productos = data.Items;
+      return res.status(200).json(productos);
+    }
+  });
+});
+
 inventarioRouter.get("/productos/:month", (req, res) => {
   const { month } = req.params;
 
@@ -433,8 +450,95 @@ inventarioRouter.post("/eliminar-productos", async (req, res) => {
   }
 });
 
-//  TODO: endpoint para traer las entradas por nombre de producto
+// todas las entradas
 
-// TODO: endpoint para traer las salidas por nombre de producto
+inventarioRouter.get("/producto/entradas", (req, res) => {
+  const params = {
+    TableName: "Entradas",
+  };
 
+  // Realizar la consulta en el índice global secundario "month-index" utilizando el método query
+  dynamodb.scan(params, (err, data) => {
+    if (err) {
+      console.error("Error al obtener los productos", err);
+      return res.status(500).json({ error: "Error interno del servidor" });
+    } else {
+      const productos = data.Items;
+      return res.status(200).json(productos);
+    }
+  });
+});
+//  endpoint para traer las entradas por nombre de producto
+inventarioRouter.get("/producto/entradas/:nombre", (req, res) => {
+  const { nombre } = req.params;
+
+  const params = {
+    TableName: "Entradas",
+    IndexName: "nombre-index", // Nombre del GSI
+    KeyConditionExpression: `#nombre = :nombre`,
+    ExpressionAttributeNames: {
+      "#nombre": "nombre", // Reemplaza "month" con el nombre real del campo de mes
+    },
+    ExpressionAttributeValues: {
+      ":nombre": { S: nombre },
+    },
+  };
+
+  // Realizar la consulta en el índice global secundario "month-index" utilizando el método query
+  dynamodb.query(params, (err, data) => {
+    if (err) {
+      console.error("Error al obtener los productos", err);
+      return res.status(500).json({ error: "Error interno del servidor" });
+    } else {
+      const productos = data.Items;
+      return res.status(200).json(productos);
+    }
+  });
+});
+
+// todas las salidas
+inventarioRouter.get("/producto/salidas", (req, res) => {
+  const params = {
+    TableName: "Salidas",
+  };
+
+  // Realizar la consulta en el índice global secundario "nombre-index" utilizando el método query
+  dynamodb.scan(params, (err, data) => {
+    if (err) {
+      console.error("Error al obtener los productos", err);
+      return res.status(500).json({ error: "Error interno del servidor" });
+    } else {
+      const productos = data.Items;
+      return res.status(200).json(productos);
+    }
+  });
+});
+
+// endpoint para traer las salidas por nombre de producto
+inventarioRouter.get("/producto/salidas/:nombre", (req, res) => {
+  const { nombre } = req.params;
+
+  const params = {
+    TableName: "Salidas",
+    IndexName: "nombre-index", // Nombre del GSI
+    KeyConditionExpression: `#nombre = :nombre`,
+    ExpressionAttributeNames: {
+      "#nombre": "nombre", // Reemplaza "month" con el nombre real del campo de mes
+    },
+    ExpressionAttributeValues: {
+      ":nombre": { S: nombre },
+    },
+  };
+
+  // Realizar la consulta en el índice global secundario "nombre-index" utilizando el método query
+  dynamodb.query(params, (err, data) => {
+    if (err) {
+      console.error("Error al obtener los productos", err);
+      return res.status(500).json({ error: "Error interno del servidor" });
+    } else {
+      const productos = data.Items;
+      return res.status(200).json(productos);
+    }
+  });
+});
 export default inventarioRouter;
