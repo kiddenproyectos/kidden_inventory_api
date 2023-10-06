@@ -10,6 +10,8 @@ const upload = multer({
 
 const inventarioRouter = Router();
 const dynamodb = new AWS.DynamoDB();
+// email service
+const ses = new AWS.SES();
 
 inventarioRouter.get("/productos/:month", (req, res) => {
   const { month } = req.params;
@@ -70,6 +72,7 @@ inventarioRouter.post(
       almacen,
       entradas,
       salidas,
+      minima,
     } = req.body;
 
     // obetener datos del file de la imagen
@@ -109,6 +112,7 @@ inventarioRouter.post(
         almacen: { S: almacen || "0" },
         entradas: { S: entradas || "--" },
         salidas: { S: salidas || "--" },
+        minima: { S: minima },
       };
       const putParams = {
         TableName: "Inventario",
@@ -170,6 +174,7 @@ inventarioRouter.post(
                   almacen: { S: almacen || "0" },
                   entradas: { S: entradas || "--" },
                   salidas: { S: salidas || "--" },
+                  minima: { S: minima },
                 };
 
                 const putParams = {
@@ -247,12 +252,44 @@ inventarioRouter.put("/sumar-entrada/:id", (req, res) => {
 
 inventarioRouter.put("/restar-salida/:id", (req, res) => {
   const { id } = req.params;
-  const { salidas, almacen } = req.body;
+  // esos datos sacarlos de el front para enviar el correo
+  const { salidas, almacen, minima, nombre } = req.body;
 
   if (Number(salidas) > Number(almacen)) {
     return res.status(500).json({
       error:
         "cuidado tu numero de salidas es mayor que tu existencia, verifica los datos",
+    });
+  }
+  if (Number(almacen) <= Number(minima)) {
+    // Configurar los detalles del correo
+    const params = {
+      Source: "inventario@kidden.com.mx", // Debe estar verificado en AWS SES
+      Destination: {
+        ToAddresses: ["inventario@kidden.com.mx"], // Correo del destinatario
+      },
+      Message: {
+        Subject: {
+          Data: `Producto ${nombre} ¡Alerta!`,
+          Charset: "UTF-8",
+        },
+        Body: {
+          Text: {
+            Data: "El valor de almacen es menor o igual a minima. Se necesita atención.",
+            Charset: "UTF-8",
+          },
+        },
+      },
+    };
+
+    // Enviar el correo
+    ses.sendEmail(params, (err, data) => {
+      if (err) {
+        console.error("Error al enviar el correo:", err);
+        return res.status(500).json({ error: err });
+      } else {
+        console.log("Correo enviado correctamente:", data);
+      }
     });
   }
 
