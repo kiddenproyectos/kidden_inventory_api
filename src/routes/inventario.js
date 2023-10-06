@@ -261,7 +261,7 @@ inventarioRouter.put("/restar-salida/:id", (req, res) => {
         "cuidado tu numero de salidas es mayor que tu existencia, verifica los datos",
     });
   }
-  if (Number(almacen) <= Number(minima)) {
+  if (Number(almacen) - Number(salidas) <= Number(minima)) {
     // Configurar los detalles del correo
     const params = {
       Source: "inventario@kidden.com.mx", // Debe estar verificado en AWS SES
