@@ -235,7 +235,6 @@ inventarioRouter.post(
 inventarioRouter.put("/sumar-entrada/:id", (req, res) => {
   const { id } = req.params;
   const { entradas, almacen, nombre } = req.body;
-
   const updateParams = {
     TableName: "Inventario",
     Key: {
@@ -471,6 +470,7 @@ inventarioRouter.get("/producto/entradas", (req, res) => {
 //  endpoint para traer las entradas por nombre de producto
 inventarioRouter.get("/producto/entradas/:nombre", (req, res) => {
   const { nombre } = req.params;
+  console.log(nombre);
 
   const params = {
     TableName: "Entradas",
@@ -541,4 +541,84 @@ inventarioRouter.get("/producto/salidas/:nombre", (req, res) => {
     }
   });
 });
+
+// editar una foto de producto ya en la base de datos
+inventarioRouter.put(
+  "/producto/editar-foto/:id",
+  upload.single("imagen"),
+  (req, res) => {
+    const { id } = req.params;
+    const { nombre } = req.body;
+
+    const imagen = req.file;
+    // Generar un ID único para el nuevo usuario
+    const alphabet = "0123456789";
+    const nanoid = customAlphabet(alphabet, 4);
+    const idImage = nanoid();
+
+    // Configura S3 para cargar la imagen
+    const s3 = new AWS.S3();
+    // Nombre del archivo en S3 (puedes ajustarlo según tu estructura)
+    const imageKey = `productos/${idImage}-${nombre}.jpg`;
+
+    if (imagen.size < 1024 * 1024 * 10) {
+      sharp(imagen.buffer)
+        .jpeg({ quality: 80 }) // Puedes ajustar la calidad de compresión
+        .toBuffer()
+        .then((buffer) => {
+          const imageParams = {
+            Bucket: "kidden-fotos-productos",
+            Key: imageKey,
+            Body: buffer,
+            ContentType: imagen.mimetype,
+          };
+          // subir a el bucket de S3
+          s3.upload(imageParams, (err, data) => {
+            if (err) {
+              console.error("Error al subir la imagen a S3:", err);
+              return res.status(500).json({ error: err });
+            } else {
+              console.log("Imagen subida a S3:", data.Location);
+              // hacer un producto con la location de la imagen
+              const updateParams = {
+                TableName: "Inventario",
+                Key: {
+                  id: { S: `${id}` }, // Reemplaza "id" con el nombre de la clave primaria
+                },
+                ExpressionAttributeNames: {
+                  "#imagenes": "imagenes",
+                },
+                UpdateExpression: "set #imagenes = :imagenes",
+                ExpressionAttributeValues: {
+                  ":imagenes": { S: `${data.Location}` },
+                },
+                ReturnValues: "ALL_NEW",
+              };
+              dynamodb.updateItem(updateParams, (err, data) => {
+                if (err) {
+                  console.error("Error al editar el producto:", err);
+                  return res.status(500).json({ error: err });
+                } else {
+                  // Generar un ID único para el nuevo usuario
+                  return res.status(201).json({
+                    message: "Producto Editado correctamente",
+                    productoEditado: data,
+                  });
+                }
+              });
+            }
+          });
+        })
+        .catch((err) => {
+          console.error("Error al comprimir la imagen:", err);
+          return res.status(500).json({ error: err });
+        });
+    } else {
+      return res.status(400).json({
+        error: "La imagen excede el tamaño máximo permitido de 10 MB",
+      });
+    }
+  }
+);
+
 export default inventarioRouter;
