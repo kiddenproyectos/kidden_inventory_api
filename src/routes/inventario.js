@@ -620,5 +620,50 @@ inventarioRouter.put(
     }
   }
 );
+// editar datos de producto
+
+inventarioRouter.put("/editar/producto/:id", (req, res) => {
+  const { id } = req.params;
+  const updateData = req.body;
+
+  // Construye las expresiones y valores de atributo dinámicamente
+  let updateExpression = "set";
+  const expressionAttributeNames = {};
+  const expressionAttributeValues = {};
+
+  for (const key in updateData) {
+    if (updateData.hasOwnProperty(key)) {
+      const value = updateData[key];
+      updateExpression += ` #${key} = :${key},`;
+      expressionAttributeNames[`#${key}`] = key; // Agrega el nombre de atributo
+      expressionAttributeValues[`:${key}`] = { S: value };
+    }
+  }
+
+  updateExpression = updateExpression.slice(0, -1); // Elimina la coma final
+
+  const updateParams = {
+    TableName: "Inventario",
+    Key: {
+      id: { S: `${id}` },
+    },
+    ExpressionAttributeNames: expressionAttributeNames,
+    UpdateExpression: updateExpression,
+    ExpressionAttributeValues: expressionAttributeValues,
+    ReturnValues: "ALL_NEW",
+  };
+
+  dynamodb.updateItem(updateParams, (err, data) => {
+    if (err) {
+      console.error("Error al editar el producto:", err);
+      return res.status(500).json({ error: err });
+    } else {
+      return res.status(201).json({
+        message: "Producto Editado correctamente",
+        productoEditado: data,
+      });
+    }
+  });
+});
 
 export default inventarioRouter;
