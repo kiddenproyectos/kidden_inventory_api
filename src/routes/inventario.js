@@ -22,7 +22,7 @@ inventarioRouter.get("/productos", (req, res) => {
   dynamodb.scan(params, (err, data) => {
     if (err) {
       console.error("Error al obtener los productos", err);
-      return res.status(500).json({ error: "Error interno del servidor" });
+      return res.status(500).json({ error: err });
     } else {
       const productos = data.Items;
       return res.status(200).json(productos);
@@ -65,7 +65,7 @@ inventarioRouter.get("/productos/:month", (req, res) => {
   dynamodb.query(params, (err, data) => {
     if (err) {
       console.error("Error al obtener los productos", err);
-      return res.status(500).json({ error: "Error interno del servidor" });
+      return res.status(500).json({ error: err });
     } else {
       const productos = data.Items;
       return res.status(200).json(productos);
@@ -90,6 +90,9 @@ inventarioRouter.post(
       entradas,
       salidas,
       minima,
+      caja,
+      piezasPorCaja,
+      unidad,
     } = req.body;
 
     // obetener datos del file de la imagen
@@ -114,7 +117,7 @@ inventarioRouter.post(
       const producto = {
         id: { S: id },
         nombre: { S: nombre },
-        presentacion: { S: presentacion },
+        presentacion: { S: presentacion || "Caja" },
         marca: { S: marca || "Sin marca" },
         modelo: { S: modelo || "N/A" },
         estado: { S: estado || "No Activo" },
@@ -130,6 +133,9 @@ inventarioRouter.post(
         entradas: { S: entradas || "--" },
         salidas: { S: salidas || "--" },
         minima: { S: minima },
+        caja: { S: caja },
+        piezasPorCaja: { S: piezasPorCaja || "0" },
+        unidad: { S: unidad || "Piezas" },
       };
       const putParams = {
         TableName: "Inventario",
@@ -192,6 +198,9 @@ inventarioRouter.post(
                   entradas: { S: entradas || "--" },
                   salidas: { S: salidas || "--" },
                   minima: { S: minima },
+                  caja: { S: caja },
+                  piezasPorCaja: { s: piezasPorCaja || "0" },
+                  unidad: { S: unidad || "Piezas" },
                 };
 
                 const putParams = {
@@ -234,7 +243,8 @@ inventarioRouter.post(
 // al agregar una nueva entra se tiene que considerar la existencia actual
 inventarioRouter.put("/sumar-entrada/:id", (req, res) => {
   const { id } = req.params;
-  const { entradas, almacen, nombre } = req.body;
+  const { entradas, almacen, nombre, caja, piezasTotales, piezasPorCaja } =
+    req.body;
   const updateParams = {
     TableName: "Inventario",
     Key: {
@@ -247,7 +257,13 @@ inventarioRouter.put("/sumar-entrada/:id", (req, res) => {
     UpdateExpression: "set #entradas = :entradas,#almacen=:almacen",
     ExpressionAttributeValues: {
       ":entradas": { S: `${entradas}` },
-      ":almacen": { S: `${Number(entradas) + Number(almacen)}` },
+      ":almacen": {
+        S: `${
+          caja === "si"
+            ? (Number(piezasTotales) + Number(entradas)) / Number(piezasPorCaja)
+            : Number(almacen) + Number(entradas)
+        }`,
+      },
     },
     ReturnValues: "ALL_NEW",
   };
@@ -296,44 +312,86 @@ inventarioRouter.put("/sumar-entrada/:id", (req, res) => {
 inventarioRouter.put("/restar-salida/:id", (req, res) => {
   const { id } = req.params;
   // esos datos sacarlos de el front para enviar el correo
-  const { salidas, almacen, minima, nombre } = req.body;
+  const {
+    salidas,
+    almacen,
+    minima,
+    nombre,
+    caja,
+    piezasTotales,
+    piezasPorCaja,
+  } = req.body;
 
-  if (Number(salidas) > Number(almacen)) {
-    return res.status(500).json({
-      error:
-        "cuidado tu numero de salidas es mayor que tu existencia, verifica los datos",
-    });
-  }
-  if (Number(almacen) - Number(salidas) <= Number(minima)) {
-    // Configurar los detalles del correo
-    const params = {
-      Source: "inventario@kidden.com.mx", // Debe estar verificado en AWS SES
-      Destination: {
-        ToAddresses: ["inventario@kidden.com.mx"], // Correo del destinatario
-      },
-      Message: {
-        Subject: {
-          Data: `Producto ${nombre} ¡Alerta!`,
-          Charset: "UTF-8",
+  if (caja === "si") {
+    if (Number(piezasTotales) - Number(salidas) <= Number(minima)) {
+      // Configurar los detalles del correo
+      const params = {
+        Source: "inventario@kidden.com.mx", // Debe estar verificado en AWS SES
+        Destination: {
+          ToAddresses: ["inventario@kidden.com.mx", "kiddenalmacen@gmail.com"], // Correo del destinatario
         },
-        Body: {
-          Text: {
-            Data: "El valor de almacen es menor o igual a minima. Se necesita atención.",
+        Message: {
+          Subject: {
+            Data: `Producto ${nombre} ¡Alerta!`,
             Charset: "UTF-8",
           },
+          Body: {
+            Text: {
+              Data: "El valor de almacen es menor o igual a minima. Se necesita atención.",
+              Charset: "UTF-8",
+            },
+          },
         },
-      },
-    };
+      };
 
-    // Enviar el correo
-    ses.sendEmail(params, (err, data) => {
-      if (err) {
-        console.error("Error al enviar el correo:", err);
-        return res.status(500).json({ error: err });
-      } else {
-        console.log("Correo enviado correctamente:", data);
-      }
-    });
+      // Enviar el correo
+      ses.sendEmail(params, (err, data) => {
+        if (err) {
+          console.error("Error al enviar el correo:", err);
+          return res.status(500).json({ error: err });
+        } else {
+          console.log("Correo enviado correctamente:", data);
+        }
+      });
+    }
+  } else {
+    if (Number(salidas) > Number(almacen)) {
+      return res.status(500).json({
+        error:
+          "cuidado tu numero de salidas es mayor que tu existencia, verifica los datos",
+      });
+    }
+    if (Number(almacen) - Number(salidas) <= Number(minima)) {
+      // Configurar los detalles del correo
+      const params = {
+        Source: "inventario@kidden.com.mx", // Debe estar verificado en AWS SES
+        Destination: {
+          ToAddresses: ["inventario@kidden.com.mx", "kiddenalmacen@gmail.com"], // Correo del destinatario
+        },
+        Message: {
+          Subject: {
+            Data: `Producto ${nombre} ¡Alerta!`,
+            Charset: "UTF-8",
+          },
+          Body: {
+            Text: {
+              Data: "El valor de almacen es menor o igual a minima. Se necesita atención.",
+              Charset: "UTF-8",
+            },
+          },
+        },
+      };
+
+      // Enviar el correo
+      ses.sendEmail(params, (err, data) => {
+        if (err) {
+          console.error("Error al enviar el correo:", err);
+          return res.status(500).json({ error: err });
+        } else {
+          console.log("Correo enviado correctamente:", data);
+        }
+      });
+    }
   }
 
   const updateParams = {
@@ -348,10 +406,17 @@ inventarioRouter.put("/restar-salida/:id", (req, res) => {
     UpdateExpression: "set #salidas = :salidas,#almacen=:almacen",
     ExpressionAttributeValues: {
       ":salidas": { S: `${salidas}` },
-      ":almacen": { S: `${Number(almacen) - Number(salidas)}` },
+      ":almacen": {
+        S: `${
+          caja === "si"
+            ? (Number(piezasTotales) - Number(salidas)) / Number(piezasPorCaja)
+            : Number(almacen) - Number(salidas)
+        }`,
+      },
     },
     ReturnValues: "ALL_NEW",
   };
+
   // modificar la cantidad de entradas al agregar mas
   dynamodb.updateItem(updateParams, (err, data) => {
     if (err) {
@@ -625,7 +690,6 @@ inventarioRouter.put(
 inventarioRouter.put("/editar/producto/:id", (req, res) => {
   const { id } = req.params;
   const updateData = req.body;
-
   // Construye las expresiones y valores de atributo dinámicamente
   let updateExpression = "set";
   const expressionAttributeNames = {};
