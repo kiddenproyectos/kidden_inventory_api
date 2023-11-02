@@ -199,7 +199,7 @@ inventarioRouter.post(
                   salidas: { S: salidas || "--" },
                   minima: { S: minima },
                   caja: { S: caja },
-                  piezasPorCaja: { s: piezasPorCaja || "0" },
+                  piezasPorCaja: { S: piezasPorCaja || "0" },
                   unidad: { S: unidad || "Piezas" },
                 };
 
