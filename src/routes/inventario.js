@@ -93,6 +93,7 @@ inventarioRouter.post(
       caja,
       piezasPorCaja,
       unidad,
+      fechaCaducidad,
     } = req.body;
 
     // obetener datos del file de la imagen
@@ -126,7 +127,8 @@ inventarioRouter.post(
         imagenes: {
           S: "https://kidden-fotos-productos.s3.us-east-1.amazonaws.com/productos/6318-Producto%20de%20Ejemplo.jpg",
         },
-        fechaAgregado: { S: new Date().toISOString() }, // Ejemplo de cómo obtener la fecha actual en formato ISO 8601
+        fechaAgregado: { S: new Date().toISOString() }, // Ejemplo de cómo obtener la fecha actual en formato ISO 8601}
+        fechaCaducidad: { S: fechaCaducidad || "--" }, // Ejemplo de cómo obtener la fecha actual en formato ISO 8601
         month: { S: (new Date().getMonth() + 1).toString() },
         year: { S: new Date().getFullYear().toString() },
         almacen: { S: almacen || "0" },
@@ -192,6 +194,7 @@ inventarioRouter.post(
                   // como yo solo quiero subir una sola imagen uso este caso
                   imagenes: { S: data.Location },
                   fechaAgregado: { S: new Date().toISOString() }, // Ejemplo de cómo obtener la fecha actual en formato ISO 8601
+                  fechaCaducidad: { S: fechaCaducidad || "--" }, // Ejemplo de cómo obtener la fecha actual en formato ISO 8601
                   month: { S: (new Date().getMonth() + 1).toString() },
                   year: { S: new Date().getFullYear().toString() },
                   almacen: { S: almacen || "0" },
