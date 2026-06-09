@@ -94,6 +94,8 @@ inventarioRouter.post(
       piezasPorCaja,
       unidad,
       fechaCaducidad,
+      temu,
+      articulosLimpieza,
     } = req.body;
 
     // obetener datos del file de la imagen
@@ -138,6 +140,8 @@ inventarioRouter.post(
         caja: { S: caja },
         piezasPorCaja: { S: piezasPorCaja || "0" },
         unidad: { S: unidad || "Piezas" },
+        temu: { S: temu || "--" },
+        articulosLimpieza: { S: articulosLimpieza || "--" },
       };
       const putParams = {
         TableName: "Inventario",
@@ -204,6 +208,8 @@ inventarioRouter.post(
                   caja: { S: caja },
                   piezasPorCaja: { S: piezasPorCaja || "0" },
                   unidad: { S: unidad || "Piezas" },
+                  temu: { S: temu || "--" },
+                  articulosLimpieza: { S: articulosLimpieza || "--" },
                 };
 
                 const putParams = {
@@ -239,7 +245,7 @@ inventarioRouter.post(
         });
       }
     }
-  }
+  },
 );
 
 // editar items al agregar una nueva entrada
@@ -686,7 +692,7 @@ inventarioRouter.put(
         error: "La imagen excede el tamaño máximo permitido de 10 MB",
       });
     }
-  }
+  },
 );
 // editar datos de producto
 
